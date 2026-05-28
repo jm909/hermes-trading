@@ -1,0 +1,11 @@
+.env
+*.pyc
+__pycache__/
+.venv/
+.uv/
+*.egg-info/
+dist/
+state/trades.jsonl
+state/heartbeat.json
+state/hypotheses.jsonl
+state/history/
