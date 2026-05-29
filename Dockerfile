@@ -8,4 +8,5 @@ COPY hermes_trading ./hermes_trading
 COPY state ./state
 RUN uv sync
 ENV HERMES_TRADING_MODE=paper
-CMD ["uv", "run", "python", "-m", "hermes_trading.run"]
+ENV PYTHONUNBUFFERED=1
+CMD ["uv", "run", "python", "-u", "-m", "hermes_trading.run"]
