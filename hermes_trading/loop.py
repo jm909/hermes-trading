@@ -1,7 +1,9 @@
 """24/7 async trading loop — pulls data, evaluates strategy, logs outcomes."""
 import asyncio
 import json
+import os
 import pathlib
+import subprocess
 import time
 import traceback
 from datetime import datetime, timezone
@@ -71,6 +73,26 @@ def _write_heartbeat(state_dir: pathlib.Path, status: str, consecutive_failures:
 def _append_trade(state_dir: pathlib.Path, trade: dict):
     with open(state_dir / "trades.jsonl", "a") as f:
         f.write(json.dumps(trade) + "\n")
+    _push_trades_to_github(state_dir)
+
+
+def _push_trades_to_github(state_dir: pathlib.Path):
+    token = os.getenv("GIT_TOKEN")
+    if not token:
+        return
+    try:
+        repo_dir = state_dir.parent
+        remote = f"https://{token}@github.com/jm909/hermes-trading.git"
+        subprocess.run(["git", "config", "user.email", "bot@hermes-trading"], cwd=repo_dir, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "hermes-bot"], cwd=repo_dir, capture_output=True)
+        subprocess.run(["git", "add", "state/trades.jsonl"], cwd=repo_dir, capture_output=True)
+        result = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=repo_dir, capture_output=True)
+        if result.returncode != 0:
+            subprocess.run(["git", "commit", "-m", "worker: new trade logged"], cwd=repo_dir, capture_output=True)
+            subprocess.run(["git", "push", remote, "main"], cwd=repo_dir, capture_output=True, timeout=30)
+            print("[github] trades.jsonl pushed")
+    except Exception as e:
+        print(f"[github] push failed: {e}")
 
 
 async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
