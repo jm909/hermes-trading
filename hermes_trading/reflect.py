@@ -123,7 +123,7 @@ def fallback_reflect():
     }
     append_hypothesis(hypothesis)
 
-    print(f"[reflect] v{old_version} → v{strategy['version']}: {changed_var} {old_val} → {new_val} ({rationale})")
+    print(f"[reflect] v{old_version} -> v{strategy['version']}: {changed_var} {old_val} -> {new_val} ({rationale})")
 
 
 def hermes_reflect():
@@ -215,7 +215,7 @@ hypothesis: <one sentence>
     }
     append_hypothesis(hypothesis)
 
-    print(f"[reflect] v{old_version} → v{strategy['version']}: {changed_var} {old_val} → {new_val}")
+    print(f"[reflect] v{old_version} -> v{strategy['version']}: {changed_var} {old_val} -> {new_val}")
     print(f"[reflect] Hypothesis: {hypothesis_text}")
 
 
