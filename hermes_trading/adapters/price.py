@@ -8,7 +8,7 @@ import numpy as np
 
 SCHEMA_VERSION = "price/v1"
 ASSET = os.getenv("HERMES_ASSET", "BTC/USDT")
-EXCHANGE_ID = os.getenv("HERMES_EXCHANGE", "binance")
+EXCHANGE_ID = os.getenv("HERMES_EXCHANGE", "kucoin")
 
 
 class SchemaError(Exception):
