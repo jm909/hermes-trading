@@ -128,6 +128,7 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
 
             consecutive_failures = 0
             _write_heartbeat(state_dir, "ok", 0)
+            print(f"[tick] rsi={price_data.get('rsi_14')} close={price_data.get('close')} position={'open' if open_position else 'none'}")
 
         except CircuitBreakerOpen as exc:
             print(f"[circuit-breaker] {exc} — sleeping 300s before reset")
