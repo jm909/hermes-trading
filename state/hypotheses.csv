@@ -1,0 +1,3 @@
+ts,mode,strategy_version_from,strategy_version_to,changed_var,old_val,new_val,rationale,realised_return,max_drawdown_seen
+2026-05-29T11:05:06.938962+00:00,fallback,01,02,entry.threshold,30,32,realised return -2.70% < target 5.00% — loosening entry,-0.027,0.027
+2026-05-29T11:05:25.126210+00:00,fallback,02,03,entry.threshold,32,34,realised return -2.70% < target 5.00% — loosening entry,-0.027,0.027
