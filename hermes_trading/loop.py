@@ -115,13 +115,25 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
             strategy = _load_strategy(state_dir)
             current_price = price_data.get("close", 0)
 
-            # Close open position if stop-loss hit
+            # Close open position if stop-loss, take-profit, or time limit hit
             if open_position is not None:
                 entry_price = open_position["entry_price"]
+                entry_ts = open_position["entry_ts"]
                 stop_loss_pct = strategy.get("stop_loss_pct", 2.0)
+                take_profit_pct = strategy.get("take_profit_pct", 1.0)
+                max_hold_hours = strategy.get("max_hold_hours", 2.0)
                 pnl_pct = ((current_price - entry_price) / entry_price) * 100
+                held_hours = (time.monotonic() - open_position["entry_monotonic"]) / 3600
 
+                exit_reason = None
                 if pnl_pct <= -stop_loss_pct:
+                    exit_reason = "stop_loss"
+                elif pnl_pct >= take_profit_pct:
+                    exit_reason = "take_profit"
+                elif held_hours >= max_hold_hours:
+                    exit_reason = "time_exit"
+
+                if exit_reason:
                     trade = {
                         "ts": datetime.now(timezone.utc).isoformat(),
                         "asset": asset,
@@ -129,11 +141,11 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
                         "entry_price": entry_price,
                         "exit_price": current_price,
                         "pnl_pct": round(pnl_pct, 4),
-                        "exit_reason": "stop_loss",
+                        "exit_reason": exit_reason,
                         "strategy_version": strategy.get("version", "01"),
                     }
                     _append_trade(state_dir, trade)
-                    print(f"[trade] CLOSED stop-loss pnl={pnl_pct:.2f}%")
+                    print(f"[trade] CLOSED {exit_reason} pnl={pnl_pct:.2f}%", flush=True)
                     open_position = None
 
             # Open new position if entry fires and no position open
@@ -144,9 +156,10 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
                     "direction": direction,
                     "entry_price": current_price,
                     "entry_ts": datetime.now(timezone.utc).isoformat(),
+                    "entry_monotonic": time.monotonic(),
                     "position_size_r": position_size_r,
                 }
-                print(f"[trade] OPEN {direction} @ {current_price}")
+                print(f"[trade] OPEN {direction} @ {current_price}", flush=True)
 
             consecutive_failures = 0
             _write_heartbeat(state_dir, "ok", 0)

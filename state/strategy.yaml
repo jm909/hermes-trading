@@ -1,7 +1,9 @@
-version: "01"
+version: '09'
 entry:
   indicator: rsi
-  threshold: 30
+  threshold: 46
   direction: long
 stop_loss_pct: 2.0
+take_profit_pct: 1.0
+max_hold_hours: 2.0
 position_size_r: 0.5
