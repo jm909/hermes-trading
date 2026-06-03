@@ -44,25 +44,36 @@ def _load_strategy(state_dir: pathlib.Path) -> dict:
         return yaml.safe_load(f)
 
 
-def _evaluate_entry(price_data: dict, strategy: dict) -> bool:
+def _evaluate_entry(price_data: dict, strategy: dict) -> str | None:
+    """Returns 'long', 'short', or None."""
     indicator = strategy["entry"]["indicator"]
-    threshold = strategy["entry"]["threshold"]
-    direction = strategy["entry"]["direction"]
+    long_threshold  = strategy["entry"].get("threshold", 30)
+    short_threshold = strategy["entry"].get("short_threshold", 70)
+    mode = strategy["entry"].get("direction", "both")  # long | short | both
     use_trend_filter = strategy.get("ema_trend_filter", True)
 
-    if indicator == "rsi":
-        rsi = price_data.get("rsi_14")
-        if rsi is None:
-            return False
-        if direction == "long":
-            signal = rsi < threshold
-            # Trend filter: only go long if price is above EMA20
-            if use_trend_filter and not price_data.get("above_ema20", True):
-                return False
-            return signal
-        else:
-            return rsi > threshold
-    return False
+    if indicator != "rsi":
+        return None
+
+    rsi = price_data.get("rsi_14")
+    if rsi is None:
+        return None
+
+    above_ema = price_data.get("above_ema20", True)
+
+    # Long signal: RSI oversold + uptrend
+    if mode in ("long", "both"):
+        if rsi < long_threshold:
+            if not use_trend_filter or above_ema:
+                return "long"
+
+    # Short signal: RSI overbought + downtrend
+    if mode in ("short", "both"):
+        if rsi > short_threshold:
+            if not use_trend_filter or not above_ema:
+                return "short"
+
+    return None
 
 
 def _write_heartbeat(state_dir: pathlib.Path, status: str, consecutive_failures: int):
@@ -134,12 +145,17 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
             # Close open position if stop-loss, take-profit, or time limit hit
             if open_position is not None:
                 entry_price = open_position["entry_price"]
-                entry_ts = open_position["entry_ts"]
-                stop_loss_pct = strategy.get("stop_loss_pct", 2.0)
-                take_profit_pct = strategy.get("take_profit_pct", 1.0)
-                max_hold_hours = strategy.get("max_hold_hours", 2.0)
-                pnl_pct = ((current_price - entry_price) / entry_price) * 100
+                direction = open_position["direction"]
+                stop_loss_pct = strategy.get("stop_loss_pct", 1.0)
+                take_profit_pct = strategy.get("take_profit_pct", 2.0)
+                max_hold_hours = strategy.get("max_hold_hours", 4.0)
                 held_hours = (time.monotonic() - open_position["entry_monotonic"]) / 3600
+
+                # PnL flipped for shorts
+                if direction == "short":
+                    pnl_pct = ((entry_price - current_price) / entry_price) * 100
+                else:
+                    pnl_pct = ((current_price - entry_price) / entry_price) * 100
 
                 exit_reason = None
                 if pnl_pct <= -stop_loss_pct:
@@ -171,11 +187,11 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
                     open_position = None
 
             # Open new position if entry fires and no position open
-            if open_position is None and _evaluate_entry(price_data, strategy):
-                direction = strategy["entry"]["direction"]
+            signal = _evaluate_entry(price_data, strategy) if open_position is None else None
+            if signal:
                 position_size_r = strategy.get("position_size_r", 0.5)
                 open_position = {
-                    "direction": direction,
+                    "direction": signal,
                     "entry_price": current_price,
                     "entry_ts": datetime.now(timezone.utc).isoformat(),
                     "entry_monotonic": time.monotonic(),
@@ -183,7 +199,7 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
                     "entry_trend": "UP" if price_data.get("above_ema20") else "DOWN",
                     "position_size_r": position_size_r,
                 }
-                print(f"[trade] OPEN {direction} @ {current_price}", flush=True)
+                print(f"[trade] OPEN {signal.upper()} @ {current_price}", flush=True)
 
             consecutive_failures = 0
             _write_heartbeat(state_dir, "ok", 0)
