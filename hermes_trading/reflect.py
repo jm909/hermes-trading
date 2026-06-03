@@ -93,9 +93,12 @@ def fallback_reflect():
         changed_var = "stop_loss_pct"
         rationale = f"drawdown {max_drawdown_seen:.2%} > max {max_dd:.2%} — tightening stop"
     elif realised_return < target:
-        # Return below target — loosen entry threshold
+        # Return below target — loosen entry threshold (RSI max is 100)
         old_val = strategy["entry"]["threshold"]
-        new_val = old_val + 2
+        new_val = min(old_val + 2, 70)  # cap at 70 — above 70 RSI fires on almost every candle
+        if new_val == old_val:
+            print(f"[reflect] Threshold already at cap ({old_val}) — no change.")
+            return
         strategy["entry"]["threshold"] = new_val
         changed_var = "entry.threshold"
         rationale = f"realised return {realised_return:.2%} < target {target:.2%} — loosening entry"

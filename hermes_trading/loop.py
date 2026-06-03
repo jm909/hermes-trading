@@ -73,26 +73,37 @@ def _write_heartbeat(state_dir: pathlib.Path, status: str, consecutive_failures:
 def _append_trade(state_dir: pathlib.Path, trade: dict):
     with open(state_dir / "trades.jsonl", "a") as f:
         f.write(json.dumps(trade) + "\n")
-    _push_trades_to_github(state_dir)
+    _push_file_to_github(state_dir / "trades.jsonl", "state/trades.jsonl", "worker: trade logged")
 
 
-def _push_trades_to_github(state_dir: pathlib.Path):
+def _push_file_to_github(local_path: pathlib.Path, repo_path: str, message: str):
+    import base64
+    import urllib.request
     token = os.getenv("GIT_TOKEN")
     if not token:
         return
     try:
-        repo_dir = state_dir.parent
-        remote = f"https://{token}@github.com/jm909/hermes-trading.git"
-        subprocess.run(["git", "config", "user.email", "bot@hermes-trading"], cwd=repo_dir, capture_output=True)
-        subprocess.run(["git", "config", "user.name", "hermes-bot"], cwd=repo_dir, capture_output=True)
-        subprocess.run(["git", "add", "state/trades.jsonl"], cwd=repo_dir, capture_output=True)
-        result = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=repo_dir, capture_output=True)
-        if result.returncode != 0:
-            subprocess.run(["git", "commit", "-m", "worker: new trade logged"], cwd=repo_dir, capture_output=True)
-            subprocess.run(["git", "push", remote, "main"], cwd=repo_dir, capture_output=True, timeout=30)
-            print("[github] trades.jsonl pushed")
+        content = local_path.read_bytes()
+        encoded = base64.b64encode(content).decode()
+        # Get current SHA
+        url = f"https://api.github.com/repos/jm909/hermes-trading/contents/{repo_path}"
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json", "User-Agent": "hermes-bot"}
+        req = urllib.request.Request(url, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                sha = json.loads(resp.read())["sha"]
+        except Exception:
+            sha = None
+        body = {"message": message, "content": encoded}
+        if sha:
+            body["sha"] = sha
+        data = json.dumps(body).encode()
+        req2 = urllib.request.Request(url, data=data, headers=headers, method="PUT")
+        with urllib.request.urlopen(req2, timeout=15) as resp:
+            resp.read()
+        print(f"[github] {repo_path} pushed", flush=True)
     except Exception as e:
-        print(f"[github] push failed: {e}")
+        print(f"[github] push failed: {e}", flush=True)
 
 
 async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):

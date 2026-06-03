@@ -21,23 +21,11 @@ def load_goal() -> dict:
 
 
 def push_to_github():
-    import os
-    token = os.getenv("GIT_TOKEN")
-    if not token:
-        return
-    try:
-        repo = STATE_DIR.parent
-        remote = f"https://{token}@github.com/jm909/hermes-trading.git"
-        subprocess.run(["git", "config", "user.email", "bot@hermes-trading"], cwd=repo, capture_output=True)
-        subprocess.run(["git", "config", "user.name", "hermes-bot"], cwd=repo, capture_output=True)
-        subprocess.run(["git", "add", "state/"], cwd=repo, capture_output=True)
-        result = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=repo, capture_output=True)
-        if result.returncode != 0:
-            subprocess.run(["git", "commit", "-m", "reflect: strategy update"], cwd=repo, capture_output=True)
-            subprocess.run(["git", "push", remote, "main"], cwd=repo, capture_output=True, timeout=30)
-            print("[reflect] pushed to GitHub", flush=True)
-    except Exception as e:
-        print(f"[reflect] push failed: {e}", flush=True)
+    from hermes_trading.loop import _push_file_to_github
+    for fname in ["strategy.yaml", "hypotheses.jsonl", "trades.jsonl"]:
+        path = STATE_DIR / fname
+        if path.exists():
+            _push_file_to_github(path, f"state/{fname}", f"reflect: update {fname}")
 
 
 async def run_reflection_cycle():
