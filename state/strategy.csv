@@ -2,7 +2,7 @@ Parameter,Value,Description
 Version,01,Current strategy version
 Indicator,RSI,Entry signal indicator
 RSI Threshold,30,Enter long when RSI below this
-Direction,LONG,Trade direction
+Direction,BOTH,Trade direction
 EMA Trend Filter,True,Only enter if price above EMA20
 Stop Loss,1.0%,Exit if loss exceeds this
 Take Profit,2.0%,Exit if gain exceeds this
