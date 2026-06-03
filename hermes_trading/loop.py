@@ -48,13 +48,18 @@ def _evaluate_entry(price_data: dict, strategy: dict) -> bool:
     indicator = strategy["entry"]["indicator"]
     threshold = strategy["entry"]["threshold"]
     direction = strategy["entry"]["direction"]
+    use_trend_filter = strategy.get("ema_trend_filter", True)
 
     if indicator == "rsi":
         rsi = price_data.get("rsi_14")
         if rsi is None:
             return False
         if direction == "long":
-            return rsi < threshold
+            signal = rsi < threshold
+            # Trend filter: only go long if price is above EMA20
+            if use_trend_filter and not price_data.get("above_ema20", True):
+                return False
+            return signal
         else:
             return rsi > threshold
     return False
@@ -174,7 +179,8 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
 
             consecutive_failures = 0
             _write_heartbeat(state_dir, "ok", 0)
-            print(f"[tick] rsi={price_data.get('rsi_14')} close={price_data.get('close')} position={'open' if open_position else 'none'}")
+            trend = "UP" if price_data.get("above_ema20") else "DOWN"
+            print(f"[tick] rsi={price_data.get('rsi_14')} close={price_data.get('close')} ema20={price_data.get('ema20')} trend={trend} position={'open' if open_position else 'none'}", flush=True)
 
         except CircuitBreakerOpen as exc:
             print(f"[circuit-breaker] {exc} — sleeping 300s before reset")

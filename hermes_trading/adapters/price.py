@@ -39,12 +39,13 @@ async def fetch() -> dict:
 
     exchange = exchange_class(exchange_params)
     try:
-        ohlcv = await exchange.fetch_ohlcv(ASSET, timeframe="1m", limit=30)
+        ohlcv = await exchange.fetch_ohlcv(ASSET, timeframe="1m", limit=50)
         if not ohlcv:
             raise SchemaError("Empty OHLCV response")
 
         closes = [candle[4] for candle in ohlcv]
         latest = ohlcv[-1]
+        ema20 = round(float(np.mean(closes[-20:])), 2)  # simple proxy for EMA20
 
         data = {
             "schema_version": SCHEMA_VERSION,
@@ -55,6 +56,8 @@ async def fetch() -> dict:
             "close": latest[4],
             "volume": latest[5],
             "rsi_14": _compute_rsi(closes),
+            "ema20": ema20,
+            "above_ema20": latest[4] > ema20,
             "ts": latest[0],
         }
 
