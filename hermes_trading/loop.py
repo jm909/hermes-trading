@@ -150,14 +150,20 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
                     exit_reason = "time_exit"
 
                 if exit_reason:
+                    held_mins = round(held_hours * 60, 1)
                     trade = {
-                        "ts": datetime.now(timezone.utc).isoformat(),
+                        "ts_open": open_position["entry_ts"],
+                        "ts_close": datetime.now(timezone.utc).isoformat(),
                         "asset": asset,
                         "direction": open_position["direction"],
                         "entry_price": entry_price,
                         "exit_price": current_price,
                         "pnl_pct": round(pnl_pct, 4),
+                        "pnl_usd": round((current_price - entry_price) * open_position.get("position_size_r", 0.5), 2),
                         "exit_reason": exit_reason,
+                        "held_minutes": held_mins,
+                        "entry_rsi": open_position.get("entry_rsi"),
+                        "entry_trend": open_position.get("entry_trend"),
                         "strategy_version": strategy.get("version", "01"),
                     }
                     _append_trade(state_dir, trade)
@@ -173,6 +179,8 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
                     "entry_price": current_price,
                     "entry_ts": datetime.now(timezone.utc).isoformat(),
                     "entry_monotonic": time.monotonic(),
+                    "entry_rsi": price_data.get("rsi_14"),
+                    "entry_trend": "UP" if price_data.get("above_ema20") else "DOWN",
                     "position_size_r": position_size_r,
                 }
                 print(f"[trade] OPEN {direction} @ {current_price}", flush=True)

@@ -1,7 +1,10 @@
-key,value
-version,09
-entry.indicator,rsi
-entry.threshold,46
-entry.direction,long
-stop_loss_pct,2.0
-position_size_r,0.5
+Parameter,Value,Description
+Version,01,Current strategy version
+Indicator,RSI,Entry signal indicator
+RSI Threshold,30,Enter long when RSI below this
+Direction,LONG,Trade direction
+EMA Trend Filter,True,Only enter if price above EMA20
+Stop Loss,1.0%,Exit if loss exceeds this
+Take Profit,2.0%,Exit if gain exceeds this
+Max Hold,4.0h,Force-close after this time
+Position Size,0.5R,Risk per trade
