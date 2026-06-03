@@ -1,238 +1,228 @@
-"""Reflection cycle — deterministic fallback (--fallback) or Hermes-driven (--hermes)."""
+"""Reflect on the last N closed trades and update strategy.yaml with one-variable change."""
 import argparse
 import json
-import pathlib
-import subprocess
-import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 import yaml
 
-STATE_DIR = pathlib.Path("/app/state") if pathlib.Path("/app").exists() else pathlib.Path.home() / "hermes-trading" / "state"
+from hermes_trading.score import score as compute_score
+
+STATE_DIR = Path(__file__).parent.parent / "state"
 STRATEGY_FILE = STATE_DIR / "strategy.yaml"
-HYPOTHESES_FILE = STATE_DIR / "hypotheses.jsonl"
-HISTORY_DIR = STATE_DIR / "history"
 TRADES_FILE = STATE_DIR / "trades.jsonl"
+HYPOTHESES_FILE = STATE_DIR / "hypotheses.jsonl"
 GOAL_FILE = STATE_DIR / "goal.yaml"
+LAST_REFLECT_FILE = STATE_DIR / "last_reflect.json"
+HISTORY_DIR = STATE_DIR / "history"
 
 
-def load_yaml(path: pathlib.Path) -> dict:
-    with open(path) as f:
-        return yaml.safe_load(f)
+def _load_jsonl(path: Path) -> list:
+    if not path.exists():
+        return []
+    records = []
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip()
+        if line:
+            try:
+                records.append(json.loads(line))
+            except json.JSONDecodeError:
+                pass
+    return records
 
 
-def save_yaml(path: pathlib.Path, data: dict):
-    with open(path, "w") as f:
-        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+def _load_yaml(path: Path) -> dict:
+    with open(path, encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
 
 
-def bump_version(version: str) -> str:
+def _save_yaml(path: Path, data: dict) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
+
+
+def _next_version(current: str) -> str:
     try:
-        n = int(version)
-        return str(n + 1).zfill(2)
+        n = int(str(current).lstrip("0") or "0")
     except ValueError:
-        return version + "_next"
+        n = 0
+    return f"{n + 1:02d}"
 
 
-def archive_strategy(strategy: dict):
+def _archive_strategy(strategy: dict, version: str) -> None:
     HISTORY_DIR.mkdir(parents=True, exist_ok=True)
-    version = strategy.get("version", "00")
-    archive_path = HISTORY_DIR / f"v{version.zfill(4)}.yaml"
-    save_yaml(archive_path, strategy)
+    try:
+        n = int(str(version).lstrip("0") or "0")
+    except ValueError:
+        n = 0
+    dest = HISTORY_DIR / f"v{n:04d}.yaml"
+    _save_yaml(dest, strategy)
 
 
-def append_hypothesis(hypothesis: dict):
-    with open(HYPOTHESES_FILE, "a") as f:
+def _exit_distribution(trades: list) -> dict:
+    counts = {"sl": 0, "tp": 0, "timeout": 0, "other": 0}
+    for t in trades:
+        reason = str(t.get("exit_reason", "")).lower()
+        if "sl" in reason or "stop" in reason:
+            counts["sl"] += 1
+        elif "tp" in reason or "profit" in reason or "take" in reason:
+            counts["tp"] += 1
+        elif "time" in reason or "expire" in reason:
+            counts["timeout"] += 1
+        else:
+            counts["other"] += 1
+    return counts
+
+
+def _pick_hypothesis(score_val: float, trades: list, strategy: dict) -> tuple:
+    """Returns (variable_path, old_value, new_value, rationale)."""
+    exits = _exit_distribution(trades)
+    total = len(trades) or 1
+    sl_rate = exits["sl"] / total
+    timeout_rate = exits["timeout"] / total
+
+    entry = strategy.get("entry", {})
+    threshold = int(entry.get("threshold", 30))
+    sl_pct = float(strategy.get("stop_loss_pct", 1.0))
+    tp_pct = float(strategy.get("take_profit_pct", 2.0))
+    pos_size = float(strategy.get("position_size_r", 0.5))
+    max_hold = float(strategy.get("max_hold_hours", 4.0))
+
+    # Bad score + mostly SL hits -> entry threshold too aggressive, require deeper oversold
+    if score_val < -0.2 and sl_rate > 0.5 and threshold < 45:
+        new_val = min(threshold + 3, 45)
+        return ("entry.threshold", threshold, new_val,
+                f"SL hit rate {sl_rate:.0%}, score {score_val:.3f} — raising RSI threshold "
+                f"{threshold}->{new_val} to require a stronger oversold signal before entry.")
+
+    # Very bad score -> reduce position size for capital preservation
+    if score_val < -0.4 and pos_size > 0.2:
+        new_val = round(max(pos_size - 0.1, 0.2), 2)
+        return ("position_size_r", pos_size, new_val,
+                f"Score {score_val:.3f} below -0.4 — shrinking position size {pos_size}->{new_val} "
+                f"to limit drawdown while diagnosis continues.")
+
+    # High timeout rate + losing -> positions stalling, cut max hold time
+    if timeout_rate > 0.4 and score_val < 0.1 and max_hold > 2.0:
+        new_val = max(max_hold - 1.0, 2.0)
+        return ("max_hold_hours", max_hold, new_val,
+                f"Timeout rate {timeout_rate:.0%}, score {score_val:.3f} — reducing max hold "
+                f"{max_hold}h->{new_val}h to cut losers that stall before hitting TP.")
+
+    # Marginal score + high SL rate -> SL too tight, widen slightly
+    if -0.2 <= score_val < 0.1 and sl_rate > 0.4 and sl_pct < 2.5:
+        new_val = round(sl_pct + 0.25, 2)
+        return ("stop_loss_pct", sl_pct, new_val,
+                f"SL hit rate {sl_rate:.0%}, score {score_val:.3f} — widening SL {sl_pct}%->{new_val}% "
+                f"to reduce shake-outs on valid setups.")
+
+    # Good score -> widen TP to capture more of winning runs
+    if score_val >= 0.3 and tp_pct < 4.0:
+        new_val = round(tp_pct + 0.25, 2)
+        return ("take_profit_pct", tp_pct, new_val,
+                f"Score {score_val:.3f} is positive — widening TP {tp_pct}%->{new_val}% "
+                f"to let winners run further.")
+
+    # Positive score + TP already wide -> tighten entry for higher quality
+    if score_val >= 0.2 and threshold > 25:
+        new_val = threshold - 2
+        return ("entry.threshold", threshold, new_val,
+                f"Score {score_val:.3f} with TP at {tp_pct}% — lowering RSI threshold "
+                f"{threshold}->{new_val} for higher-quality entry signals.")
+
+    # Default: no dominant signal, nudge SL tighter to improve R:R
+    if sl_pct > 0.75:
+        new_val = round(sl_pct - 0.25, 2)
+        return ("stop_loss_pct", sl_pct, new_val,
+                f"No dominant pattern (score {score_val:.3f}) — tightening SL "
+                f"{sl_pct}%->{new_val}% to improve R:R ratio.")
+
+    new_val = round(tp_pct + 0.25, 2)
+    return ("take_profit_pct", tp_pct, new_val,
+            f"Baseline nudge (score {score_val:.3f}) — widening TP {tp_pct}%->{new_val}% to improve R:R.")
+
+
+def _set_nested(obj: dict, dot_path: str, value) -> None:
+    parts = dot_path.split(".")
+    for part in parts[:-1]:
+        obj = obj.setdefault(part, {})
+    obj[parts[-1]] = value
+
+
+def reflect() -> None:
+    goal = _load_yaml(GOAL_FILE)
+    reflect_every = int(goal.get("reflection_every", 5))
+
+    last_count = 0
+    if LAST_REFLECT_FILE.exists():
+        try:
+            last_count = json.loads(LAST_REFLECT_FILE.read_text(encoding="utf-8")).get("last_trade_count", 0)
+        except Exception:
+            pass
+
+    trades = _load_jsonl(TRADES_FILE)
+    new_trades = trades[last_count:]
+
+    if len(new_trades) < reflect_every:
+        print(f"Reflect: {len(new_trades)}/{reflect_every} new trades since last reflection — waiting.")
+        return
+
+    batch = new_trades[-reflect_every:]
+    score_val = compute_score(batch, goal)
+
+    strategy = _load_yaml(STRATEGY_FILE)
+    old_version = str(strategy.get("version", "01"))
+
+    var_path, old_val, new_val, rationale = _pick_hypothesis(score_val, batch, strategy)
+
+    pnl_values = [t.get("pnl_pct", 0) / 100 for t in batch]
+    realised_return = sum(pnl_values)
+    peak, cumulative, max_dd = 0.0, 0.0, 0.0
+    for p in pnl_values:
+        cumulative += p
+        peak = max(peak, cumulative)
+        max_dd = max(max_dd, peak - cumulative)
+
+    _archive_strategy(strategy, old_version)
+
+    new_version = _next_version(old_version)
+    _set_nested(strategy, var_path, new_val)
+    strategy["version"] = new_version
+    _save_yaml(STRATEGY_FILE, strategy)
+
+    now = datetime.now(timezone.utc).isoformat()
+    hypothesis = {
+        "time": now,
+        "from_version": old_version,
+        "to_version": new_version,
+        "variable_changed": var_path,
+        "old_value": old_val,
+        "new_value": new_val,
+        "rationale": rationale,
+        "realised_return": round(realised_return, 6),
+        "max_drawdown": round(max_dd, 6),
+        "score": score_val,
+    }
+    with open(HYPOTHESES_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(hypothesis) + "\n")
 
-
-def load_recent_trades(n: int = 25) -> list:
-    if not TRADES_FILE.exists():
-        return []
-    lines = TRADES_FILE.read_text().strip().splitlines()
-    return [json.loads(l) for l in lines[-n:] if l]
-
-
-def fallback_reflect():
-    """Deterministic reflection — changes exactly ONE variable based on goal comparison."""
-    strategy = load_yaml(STRATEGY_FILE)
-    goal = load_yaml(GOAL_FILE)
-    trades = load_recent_trades()
-
-    if not trades:
-        print("[reflect] No trades yet — nothing to reflect on.")
-        return
-
-    pnl_values = [t.get("pnl_pct", 0) for t in trades]
-    realised_return = sum(pnl_values) / 100
-    target = goal.get("target_return_30d", 0.05)
-    max_dd = goal.get("max_drawdown", 0.08)
-
-    # Compute max drawdown from trades
-    cumulative = 0
-    peak = 0
-    max_drawdown_seen = 0
-    for pnl in pnl_values:
-        cumulative += pnl / 100
-        if cumulative > peak:
-            peak = cumulative
-        dd = peak - cumulative
-        if dd > max_drawdown_seen:
-            max_drawdown_seen = dd
-
-    changed_var = None
-    old_val = None
-    new_val = None
-    rationale = None
-
-    if max_drawdown_seen > max_dd:
-        # Drawdown too high — tighten stop loss
-        old_val = strategy.get("stop_loss_pct", 2.0)
-        new_val = round(old_val - 0.2, 2)
-        strategy["stop_loss_pct"] = new_val
-        changed_var = "stop_loss_pct"
-        rationale = f"drawdown {max_drawdown_seen:.2%} > max {max_dd:.2%} — tightening stop"
-    elif realised_return < target:
-        # Return below target — loosen entry threshold (RSI max is 100)
-        old_val = strategy["entry"]["threshold"]
-        new_val = min(old_val + 2, 70)  # cap at 70 — above 70 RSI fires on almost every candle
-        if new_val == old_val:
-            print(f"[reflect] Threshold already at cap ({old_val}) — no change.")
-            return
-        strategy["entry"]["threshold"] = new_val
-        changed_var = "entry.threshold"
-        rationale = f"realised return {realised_return:.2%} < target {target:.2%} — loosening entry"
-    else:
-        print(f"[reflect] Strategy on-target (return={realised_return:.2%}, dd={max_drawdown_seen:.2%}) — no change needed.")
-        return
-
-    archive_strategy(strategy)
-    old_version = strategy["version"]
-    strategy["version"] = bump_version(old_version)
-    save_yaml(STRATEGY_FILE, strategy)
-
-    hypothesis = {
-        "ts": datetime.now(timezone.utc).isoformat(),
-        "mode": "fallback",
-        "strategy_version_from": old_version,
-        "strategy_version_to": strategy["version"],
-        "changed_var": changed_var,
-        "old_val": old_val,
-        "new_val": new_val,
-        "rationale": rationale,
-        "trades_in_window": len(trades),
-        "realised_return": round(realised_return, 4),
-        "max_drawdown_seen": round(max_drawdown_seen, 4),
-    }
-    append_hypothesis(hypothesis)
-
-    print(f"[reflect] v{old_version} -> v{strategy['version']}: {changed_var} {old_val} -> {new_val} ({rationale})")
-
-
-def hermes_reflect():
-    """Hermes-driven reflection — calls hermes subprocess with trade context."""
-    strategy = load_yaml(STRATEGY_FILE)
-    goal = load_yaml(GOAL_FILE)
-    trades = load_recent_trades(25)
-
-    if not trades:
-        print("[reflect] No trades yet.")
-        return
-
-    prompt = f"""You are the brain of a self-improving trading agent.
-
-Current strategy (v{strategy.get('version', '01')}):
-{yaml.dump(strategy)}
-
-Goal:
-{yaml.dump(goal)}
-
-Last {len(trades)} closed trades (newest last):
-{json.dumps(trades, indent=2)}
-
-Rules:
-- Change exactly ONE variable in strategy.yaml.
-- Output valid YAML block with ONLY the changed key and new value.
-- Then one sentence: the hypothesis (what you expect to improve and why).
-
-Format:
-changed_var: <dotted.path>
-new_val: <value>
-hypothesis: <one sentence>
-"""
-
-    result = subprocess.run(
-        ["hermes"],
-        input=prompt,
-        capture_output=True,
-        text=True,
-        timeout=120,
+    LAST_REFLECT_FILE.write_text(
+        json.dumps({"last_trade_count": len(trades), "last_reflect_time": now}),
+        encoding="utf-8",
     )
 
-    if result.returncode != 0:
-        print(f"[reflect] hermes exited {result.returncode}: {result.stderr[:500]}")
-        sys.exit(1)
-
-    output = result.stdout.strip()
-    print(f"[reflect] Hermes output:\n{output}")
-
-    # Parse hermes output
-    lines = {l.split(":")[0].strip(): ":".join(l.split(":")[1:]).strip()
-             for l in output.splitlines() if ":" in l}
-    changed_var = lines.get("changed_var")
-    new_val_raw = lines.get("new_val")
-    hypothesis_text = lines.get("hypothesis", "")
-
-    if not changed_var or new_val_raw is None:
-        print("[reflect] Could not parse Hermes output — aborting.")
-        sys.exit(1)
-
-    # Apply the change (supports dotted paths like entry.threshold)
-    try:
-        new_val = float(new_val_raw) if "." in new_val_raw else int(new_val_raw)
-    except ValueError:
-        new_val = new_val_raw
-
-    parts = changed_var.split(".")
-    target = strategy
-    for p in parts[:-1]:
-        target = target[p]
-    old_val = target[parts[-1]]
-    target[parts[-1]] = new_val
-
-    archive_strategy(strategy)
-    old_version = strategy["version"]
-    strategy["version"] = bump_version(old_version)
-    save_yaml(STRATEGY_FILE, strategy)
-
-    hypothesis = {
-        "ts": datetime.now(timezone.utc).isoformat(),
-        "mode": "hermes",
-        "strategy_version_from": old_version,
-        "strategy_version_to": strategy["version"],
-        "changed_var": changed_var,
-        "old_val": old_val,
-        "new_val": new_val,
-        "hypothesis": hypothesis_text,
-        "trades_in_window": len(trades),
-    }
-    append_hypothesis(hypothesis)
-
-    print(f"[reflect] v{old_version} -> v{strategy['version']}: {changed_var} {old_val} -> {new_val}")
-    print(f"[reflect] Hypothesis: {hypothesis_text}")
+    print(f"Reflect v{old_version}->v{new_version}: {var_path} {old_val}->{new_val} (score {score_val:.4f})")
+    print(f"Rationale: {rationale}")
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Hermes reflect cycle")
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--fallback", action="store_true", help="Deterministic fallback reflection")
-    group.add_argument("--hermes", action="store_true", help="Hermes-driven reflection")
-    args = parser.parse_args()
+fallback_reflect = reflect  # alias used by run.py
 
-    if args.fallback:
-        fallback_reflect()
-    else:
-        hermes_reflect()
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--fallback", action="store_true")
+    parser.parse_args()
+    reflect()
 
 
 if __name__ == "__main__":
