@@ -4,7 +4,7 @@ entry:
   threshold: 30
   short_threshold: 70
   direction: both
-ema_trend_filter: true
+ema_trend_filter: false
 stop_loss_pct: 1.0
 take_profit_pct: 2.0
 max_hold_hours: 4.0
