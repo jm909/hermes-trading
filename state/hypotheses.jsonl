@@ -1,0 +1,1 @@
+{"time": "2026-06-05T21:48:55.663288+00:00", "from_version": "01", "to_version": "02", "variable_changed": "entry.threshold", "old_value": 35, "new_value": 38, "rationale": "SL hit rate 80%, score -0.523 \u2014 raising RSI threshold 35->38 to require a stronger oversold signal before entry.", "realised_return": -0.023748, "max_drawdown": 0.032925, "score": -0.5235}
