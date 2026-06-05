@@ -1,8 +1,8 @@
 ﻿version: '01'
 entry:
   indicator: rsi
-  threshold: 30
-  short_threshold: 70
+  threshold: 35
+  short_threshold: 65
   direction: both
 ema_trend_filter: false
 stop_loss_pct: 1.0
