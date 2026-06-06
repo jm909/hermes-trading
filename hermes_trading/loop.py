@@ -122,9 +122,29 @@ def _push_file_to_github(local_path: pathlib.Path, repo_path: str, message: str)
         print(f"[github] push failed: {e}", flush=True)
 
 
+def _save_position(state_dir: pathlib.Path, position: dict | None):
+    f = state_dir / "open_position.json"
+    if position is None:
+        f.unlink(missing_ok=True)
+    else:
+        f.write_text(json.dumps(position), encoding="utf-8")
+
+
+def _load_position(state_dir: pathlib.Path) -> dict | None:
+    f = state_dir / "open_position.json"
+    if not f.exists():
+        return None
+    try:
+        return json.loads(f.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
 async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
     consecutive_failures = 0
-    open_position = None
+    open_position = _load_position(state_dir)
+    if open_position:
+        print(f"[startup] restored open {open_position['direction'].upper()} @ {open_position['entry_price']} from disk", flush=True)
 
     while True:
         loop_start = time.monotonic()
@@ -149,7 +169,8 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
                 stop_loss_pct = strategy.get("stop_loss_pct", 1.0)
                 take_profit_pct = strategy.get("take_profit_pct", 2.0)
                 max_hold_hours = strategy.get("max_hold_hours", 4.0)
-                held_hours = (time.monotonic() - open_position["entry_monotonic"]) / 3600
+                entry_dt = datetime.fromisoformat(open_position["entry_ts"])
+                held_hours = (datetime.now(timezone.utc) - entry_dt).total_seconds() / 3600
 
                 # PnL flipped for shorts
                 if direction == "short":
@@ -185,6 +206,7 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
                     _append_trade(state_dir, trade)
                     print(f"[trade] CLOSED {exit_reason} pnl={pnl_pct:.2f}%", flush=True)
                     open_position = None
+                    _save_position(state_dir, None)
 
             # Open new position if entry fires and no position open
             signal = _evaluate_entry(price_data, strategy) if open_position is None else None
@@ -194,11 +216,11 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
                     "direction": signal,
                     "entry_price": current_price,
                     "entry_ts": datetime.now(timezone.utc).isoformat(),
-                    "entry_monotonic": time.monotonic(),
                     "entry_rsi": price_data.get("rsi_14"),
                     "entry_trend": "UP" if price_data.get("above_ema20") else "DOWN",
                     "position_size_r": position_size_r,
                 }
+                _save_position(state_dir, open_position)
                 print(f"[trade] OPEN {signal.upper()} @ {current_price}", flush=True)
 
             consecutive_failures = 0
