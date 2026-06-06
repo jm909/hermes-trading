@@ -153,12 +153,9 @@ def reflect() -> None:
     goal = _load_yaml(GOAL_FILE)
     reflect_every = int(goal.get("reflection_every", 5))
 
-    last_count = 0
-    if LAST_REFLECT_FILE.exists():
-        try:
-            last_count = json.loads(LAST_REFLECT_FILE.read_text(encoding="utf-8")).get("last_trade_count", 0)
-        except Exception:
-            pass
+    # Derive last_count from hypotheses (persisted to GitHub) so container restarts don't cause re-reflection
+    hypotheses = _load_jsonl(HYPOTHESES_FILE)
+    last_count = len(hypotheses) * reflect_every
 
     trades = _load_jsonl(TRADES_FILE)
     new_trades = trades[last_count:]

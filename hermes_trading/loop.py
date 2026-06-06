@@ -210,7 +210,7 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
                         "entry_price": entry_price,
                         "exit_price": current_price,
                         "pnl_pct": round(pnl_pct, 4),
-                        "pnl_usd": round((current_price - entry_price) * open_position.get("position_size_r", 0.5), 2),
+                        "pnl_usd": round(pnl_pct / 100 * entry_price * open_position.get("position_size_r", 0.5), 2),
                         "exit_reason": exit_reason,
                         "held_minutes": held_mins,
                         "entry_rsi": open_position.get("entry_rsi"),
