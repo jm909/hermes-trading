@@ -49,16 +49,16 @@ def export_trades() -> None:
         writer.writerow(TRADES_HEADERS)
         for r in records:
             writer.writerow([
-                r.get("time_opened", ""),
-                r.get("time_closed", ""),
+                r.get("ts_open", ""),
+                r.get("ts_close", ""),
                 r.get("asset", "BTC/USDT"),
                 r.get("direction", ""),
                 r.get("entry_price", ""),
                 r.get("exit_price", ""),
                 r.get("pnl_pct", ""),
-                r.get("est_pnl_usd", ""),
+                r.get("pnl_usd", ""),
                 r.get("exit_reason", ""),
-                r.get("held_mins", ""),
+                r.get("held_minutes", ""),
                 r.get("entry_rsi", ""),
                 r.get("entry_trend", ""),
                 r.get("strategy_version", ""),
