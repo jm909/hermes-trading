@@ -1,1 +1,3 @@
 Time,From Version,To Version,Variable Changed,Old Value,New Value,Rationale,Realised Return,Max Drawdown
+2026-06-05T21:48:55.663288+00:00,01,02,entry.threshold,35,38,"SL hit rate 80%, score -0.523 — raising RSI threshold 35->38 to require a stronger oversold signal before entry.",-0.023748,0.032925
+2026-06-05T22:50:59.710905+00:00,02,03,entry.threshold,38,41,"SL hit rate 80%, score -0.523 — raising RSI threshold 38->41 to require a stronger oversold signal before entry.",-0.023748,0.032925
