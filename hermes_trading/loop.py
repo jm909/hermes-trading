@@ -140,16 +140,55 @@ def _save_position(state_dir: pathlib.Path, position: dict | None):
     f = state_dir / "open_position.json"
     if position is None:
         f.unlink(missing_ok=True)
+        _delete_from_github("state/open_position.json")
     else:
         f.write_text(json.dumps(position), encoding="utf-8")
+        _push_file_to_github(f, "state/open_position.json", "worker: update open position")
+
+
+def _delete_from_github(repo_path: str):
+    import base64
+    import urllib.request
+    token = os.getenv("GIT_TOKEN")
+    if not token:
+        return
+    try:
+        url = f"https://api.github.com/repos/jm909/hermes-trading/contents/{repo_path}"
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json", "User-Agent": "hermes-bot"}
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            sha = json.loads(resp.read())["sha"]
+        body = {"message": "worker: close position", "sha": sha}
+        req2 = urllib.request.Request(url, data=json.dumps(body).encode(), headers=headers, method="DELETE")
+        with urllib.request.urlopen(req2, timeout=15) as resp:
+            resp.read()
+    except Exception:
+        pass
 
 
 def _load_position(state_dir: pathlib.Path) -> dict | None:
+    # Try local file first, then fall back to GitHub
     f = state_dir / "open_position.json"
-    if not f.exists():
+    if f.exists():
+        try:
+            return json.loads(f.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    # Pull from GitHub in case this is a fresh container
+    import base64
+    import urllib.request
+    token = os.getenv("GIT_TOKEN")
+    if not token:
         return None
     try:
-        return json.loads(f.read_text(encoding="utf-8"))
+        url = "https://api.github.com/repos/jm909/hermes-trading/contents/state/open_position.json"
+        headers = {"Authorization": f"Bearer {token}", "User-Agent": "hermes-bot"}
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        position = json.loads(base64.b64decode(data["content"]).decode())
+        f.write_text(json.dumps(position), encoding="utf-8")
+        return position
     except Exception:
         return None
 
@@ -158,7 +197,7 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
     consecutive_failures = 0
     open_position = _load_position(state_dir)
     if open_position:
-        print(f"[startup] restored open {open_position['direction'].upper()} @ {open_position['entry_price']} from disk", flush=True)
+        print(f"[startup] restored open {open_position['direction'].upper()} @ {open_position['entry_price']} from disk/GitHub", flush=True)
 
     while True:
         loop_start = time.monotonic()
