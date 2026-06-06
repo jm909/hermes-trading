@@ -86,10 +86,24 @@ def _write_heartbeat(state_dir: pathlib.Path, status: str, consecutive_failures:
         json.dump(hb, f)
 
 
+def _export_and_push_csvs(state_dir: pathlib.Path):
+    try:
+        from hermes_trading.export_csv import export_trades, export_hypotheses, export_strategy, export_heartbeat
+        export_trades()
+        export_hypotheses()
+        export_strategy()
+        export_heartbeat()
+        for fname in ("trades.csv", "hypotheses.csv", "strategy.csv"):
+            _push_file_to_github(state_dir / fname, f"state/{fname}", f"worker: update {fname}")
+    except Exception as e:
+        print(f"[export] CSV export failed: {e}", flush=True)
+
+
 def _append_trade(state_dir: pathlib.Path, trade: dict):
     with open(state_dir / "trades.jsonl", "a") as f:
         f.write(json.dumps(trade) + "\n")
     _push_file_to_github(state_dir / "trades.jsonl", "state/trades.jsonl", "worker: trade logged")
+    _export_and_push_csvs(state_dir)
 
 
 def _push_file_to_github(local_path: pathlib.Path, repo_path: str, message: str):
