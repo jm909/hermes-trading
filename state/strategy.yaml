@@ -1,11 +1,11 @@
 ema_trend_filter: false
 entry:
-  direction: both
+  direction: long
   indicator: rsi
   short_threshold: 65
-  threshold: 45
+  threshold: 35
 max_hold_hours: 4.0
-position_size_r: 0.2
-stop_loss_pct: 0.75
-take_profit_pct: 3.0
-version: '13'
+position_size_r: 0.5
+stop_loss_pct: 1.0
+take_profit_pct: 2.0
+version: '14'

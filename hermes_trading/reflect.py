@@ -153,9 +153,10 @@ def reflect() -> None:
     goal = _load_yaml(GOAL_FILE)
     reflect_every = int(goal.get("reflection_every", 5))
 
-    # Derive last_count from hypotheses (persisted to GitHub) so container restarts don't cause re-reflection
+    # last_count = total trades already reflected on (stored in hypotheses count × batch size,
+    # but capped at actual trade count so a corrupted hypothesis run can't push it past reality)
     hypotheses = _load_jsonl(HYPOTHESES_FILE)
-    last_count = len(hypotheses) * reflect_every
+    last_count = min(len(hypotheses) * reflect_every, len(_load_jsonl(TRADES_FILE)))
 
     trades = _load_jsonl(TRADES_FILE)
     new_trades = trades[last_count:]
