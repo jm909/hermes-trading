@@ -7,5 +7,5 @@ entry:
 max_hold_hours: 4.0
 position_size_r: 0.2
 stop_loss_pct: 0.75
-take_profit_pct: 2.5
-version: '11'
+take_profit_pct: 2.75
+version: '12'
