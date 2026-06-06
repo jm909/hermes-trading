@@ -1,3 +1,12 @@
 Time,From Version,To Version,Variable Changed,Old Value,New Value,Rationale,Realised Return,Max Drawdown
 2026-06-05T21:48:55.663288+00:00,01,02,entry.threshold,35,38,"SL hit rate 80%, score -0.523 — raising RSI threshold 35->38 to require a stronger oversold signal before entry.",-0.023748,0.032925
 2026-06-05T22:50:59.710905+00:00,02,03,entry.threshold,38,41,"SL hit rate 80%, score -0.523 — raising RSI threshold 38->41 to require a stronger oversold signal before entry.",-0.023748,0.032925
+2026-06-06T01:36:33.126217+00:00,03,04,entry.threshold,41,44,"SL hit rate 80%, score -0.562 — raising RSI threshold 41->44 to require a stronger oversold signal before entry.",-0.021993,0.043167
+2026-06-06T02:38:18.253425+00:00,04,05,entry.threshold,44,45,"SL hit rate 80%, score -0.562 — raising RSI threshold 44->45 to require a stronger oversold signal before entry.",-0.021993,0.043167
+2026-06-06T03:39:49.565258+00:00,05,06,position_size_r,0.5,0.4,Score -0.562 below -0.4 — shrinking position size 0.5->0.4 to limit drawdown while diagnosis continues.,-0.021993,0.043167
+2026-06-06T04:40:47.182219+00:00,06,07,position_size_r,0.4,0.3,Score -0.562 below -0.4 — shrinking position size 0.4->0.3 to limit drawdown while diagnosis continues.,-0.021993,0.043167
+2026-06-06T05:42:10.924466+00:00,07,08,position_size_r,0.3,0.2,Score -0.562 below -0.4 — shrinking position size 0.3->0.2 to limit drawdown while diagnosis continues.,-0.021993,0.043167
+2026-06-06T06:43:50.328413+00:00,08,09,stop_loss_pct,1.0,0.75,No dominant pattern (score -0.562) — tightening SL 1.0%->0.75% to improve R:R ratio.,-0.021993,0.043167
+2026-06-06T07:44:58.621109+00:00,09,10,take_profit_pct,2.0,2.25,Baseline nudge (score -0.562) — widening TP 2.0%->2.25% to improve R:R.,-0.021993,0.043167
+2026-06-06T08:46:08.980301+00:00,10,11,take_profit_pct,2.25,2.5,Baseline nudge (score -0.562) — widening TP 2.25%->2.5% to improve R:R.,-0.021993,0.043167
+2026-06-06T09:47:20.158722+00:00,11,12,take_profit_pct,2.5,2.75,Baseline nudge (score -0.562) — widening TP 2.5%->2.75% to improve R:R.,-0.021993,0.043167
