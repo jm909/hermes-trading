@@ -100,9 +100,24 @@ def _export_and_push_csvs(state_dir: pathlib.Path):
 
 
 def _append_trade(state_dir: pathlib.Path, trade: dict):
-    with open(state_dir / "trades.jsonl", "a") as f:
+    trades_file = state_dir / "trades.jsonl"
+    # Deduplicate: skip if a trade with same ts_open + entry_price + direction already exists
+    if trades_file.exists():
+        for line in trades_file.read_text(encoding="utf-8-sig").splitlines():
+            if not line.strip():
+                continue
+            try:
+                existing = json.loads(line)
+                if (existing.get("ts_open") == trade["ts_open"] and
+                        existing.get("entry_price") == trade["entry_price"] and
+                        existing.get("direction") == trade["direction"]):
+                    print(f"[trade] duplicate skipped ({trade['ts_open']})", flush=True)
+                    return
+            except Exception:
+                pass
+    with open(trades_file, "a") as f:
         f.write(json.dumps(trade) + "\n")
-    _push_file_to_github(state_dir / "trades.jsonl", "state/trades.jsonl", "worker: trade logged")
+    _push_file_to_github(trades_file, "state/trades.jsonl", "worker: trade logged")
     _export_and_push_csvs(state_dir)
 
 
