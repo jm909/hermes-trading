@@ -5,7 +5,7 @@ entry:
   short_threshold: 65
   threshold: 41
 max_hold_hours: 0.4167
-position_size_r: 0.4
+position_size_r: 0.3
 stop_loss_pct: 0.3
 take_profit_pct: 0.4
-version: '19'
+version: '20'
