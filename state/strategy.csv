@@ -1,5 +1,5 @@
 Parameter,Value,Description
-Version,19,Current strategy version
+Version,20,Current strategy version
 Indicator,RSI,Entry signal indicator
 RSI Threshold,41,Enter long when RSI below this
 Direction,LONG,Trade direction
@@ -8,4 +8,4 @@ Stop Loss,0.3 pct,Exit if loss exceeds this
 Take Profit,0.4 pct,Exit if gain exceeds this
 Short Threshold,65,Enter short when RSI above this
 Max Hold,0.4167h,Force-close after this time
-Position Size,0.4R,Risk per trade
+Position Size,0.3R,Risk per trade
