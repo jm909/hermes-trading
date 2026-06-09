@@ -15,3 +15,9 @@ Time,From Version,To Version,Variable Changed,Old Value,New Value,Rationale,Real
 2026-06-08T14:38:17.951347+00:00,18,19,entry.threshold,38,41,"SL hit rate 80%, score -0.454 — raising RSI threshold 38->41 to require a stronger oversold signal before entry.",-0.00936,0.014445
 2026-06-08T21:43:23.158525+00:00,19,20,position_size_r,0.4,0.3,Score -0.414 below -0.4 — shrinking position size 0.4->0.3 to limit drawdown while diagnosis continues.,-0.002544,0.003723
 2026-06-09T04:49:38.440575+00:00,20,21,take_profit_pct,0.4,0.65,Baseline nudge (score 0.079) — widening TP 0.4%->0.65% to improve R:R.,0.008429,0.001346
+2026-06-09T13:29:41.061274+00:00,23,24,max_hold_hours,4.0,3.0,"Timeout rate 100%, score 0.071 — reducing max hold 4.0h->3.0h to cut losers that stall before hitting TP.",0.007076,0.0
+2026-06-09T14:31:44.370022+00:00,24,25,max_hold_hours,3.0,2.0,"Timeout rate 100%, score 0.071 — reducing max hold 3.0h->2.0h to cut losers that stall before hitting TP.",0.007076,0.0
+2026-06-09T16:34:17.783079+00:00,26,27,take_profit_pct,1.75,2.0,Baseline nudge (score 0.071) — widening TP 1.75%->2.0% to improve R:R.,0.007076,0.0
+2026-06-09T17:38:27.074336+00:00,27,28,take_profit_pct,2.0,2.25,Baseline nudge (score 0.071) — widening TP 2.0%->2.25% to improve R:R.,0.007076,0.0
+2026-06-09T18:44:08.479483+00:00,28,29,take_profit_pct,2.25,2.5,Baseline nudge (score 0.071) — widening TP 2.25%->2.5% to improve R:R.,0.007076,0.0
+2026-06-09T20:00:40.288619+00:00,29,30,take_profit_pct,2.5,2.75,Baseline nudge (score 0.071) — widening TP 2.5%->2.75% to improve R:R.,0.007076,0.0
