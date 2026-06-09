@@ -39,7 +39,7 @@ async def fetch() -> dict:
 
     exchange = exchange_class(exchange_params)
     try:
-        ohlcv = await exchange.fetch_ohlcv(ASSET, timeframe="1m", limit=50)
+        ohlcv = await exchange.fetch_ohlcv(ASSET, timeframe="15m", limit=50)
         if not ohlcv:
             raise SchemaError("Empty OHLCV response")
 

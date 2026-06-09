@@ -16,7 +16,7 @@ from hermes_trading.adapters.news import fetch as fetch_news
 from hermes_trading.adapters.macro import fetch as fetch_macro
 from hermes_trading.score import score
 
-HEARTBEAT_INTERVAL = 5  # seconds
+HEARTBEAT_INTERVAL = 30  # seconds
 MAX_CONSECUTIVE_FAILURES = 5
 RETRY_ATTEMPTS = 3
 RETRY_BASE_DELAY = 2  # seconds
