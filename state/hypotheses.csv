@@ -24,3 +24,4 @@ Time,From Version,To Version,Variable Changed,Old Value,New Value,Rationale,Real
 2026-06-09T22:06:18.835664+00:00,30,31,position_size_r,0.5,0.4,Score -0.428 below -0.4 — shrinking position size 0.5->0.4 to limit drawdown while diagnosis continues.,-0.002776,0.00751
 2026-06-10T00:07:01.539789+00:00,31,32,take_profit_pct,2.75,3.0,Baseline nudge (score -0.269) — widening TP 2.75%->3.0% to improve R:R.,0.001285,0.00751
 2026-06-10T01:32:26.611258+00:00,32,33,take_profit_pct,3.0,3.25,Baseline nudge (score -0.269) — widening TP 3.0%->3.25% to improve R:R.,0.001285,0.00751
+2026-06-10T09:48:47.947775+00:00,33,34,entry.threshold,42,45,"SL hit rate 60%, score -0.459 — raising RSI threshold 42->45 to require a stronger oversold signal before entry.",-0.015596,0.015596
