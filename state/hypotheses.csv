@@ -27,3 +27,4 @@ Time,From Version,To Version,Variable Changed,Old Value,New Value,Rationale,Real
 2026-06-10T09:48:47.947775+00:00,33,34,entry.threshold,42,45,"SL hit rate 60%, score -0.459 — raising RSI threshold 42->45 to require a stronger oversold signal before entry.",-0.015596,0.015596
 2026-06-12T07:00:48.362669+00:00,34,35,take_profit_pct,3.25,3.5,Baseline nudge (score 0.061) — widening TP 3.25%->3.5% to improve R:R.,0.007082,0.002584
 2026-06-12T16:37:10.689192+00:00,35,36,take_profit_pct,3.5,3.75,Baseline nudge (score 0.101) — widening TP 3.5%->3.75% to improve R:R.,0.011144,0.002779
+2026-06-13T19:07:53.259640+00:00,36,37,position_size_r,0.4,0.3,Score -0.413 below -0.4 — shrinking position size 0.4->0.3 to limit drawdown while diagnosis continues.,-0.000334,0.003531
