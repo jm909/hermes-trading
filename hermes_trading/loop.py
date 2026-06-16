@@ -236,7 +236,6 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
                 direction = open_position["direction"]
                 stop_loss_pct = strategy.get("stop_loss_pct", 1.0)
                 take_profit_pct = strategy.get("take_profit_pct", 2.0)
-                max_hold_hours = strategy.get("max_hold_hours", 4.0)
                 entry_dt = datetime.fromisoformat(open_position["entry_ts"])
                 held_hours = (datetime.now(timezone.utc) - entry_dt).total_seconds() / 3600
 
@@ -251,8 +250,6 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
                     exit_reason = "stop_loss"
                 elif pnl_pct >= take_profit_pct:
                     exit_reason = "take_profit"
-                elif held_hours >= max_hold_hours:
-                    exit_reason = "time_exit"
 
                 if exit_reason:
                     held_mins = round(held_hours * 60, 1)

@@ -3,9 +3,8 @@ entry:
   direction: both
   indicator: rsi
   short_threshold: 58
-  threshold: 45
-max_hold_hours: 2.0
+  threshold: 42
 position_size_r: 0.2
-stop_loss_pct: 0.75
+stop_loss_pct: 1.5
 take_profit_pct: 4.0
-version: '39'
+version: '40'

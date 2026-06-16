@@ -79,14 +79,12 @@ def _pick_hypothesis(score_val: float, trades: list, strategy: dict) -> tuple:
     exits = _exit_distribution(trades)
     total = len(trades) or 1
     sl_rate = exits["sl"] / total
-    timeout_rate = exits["timeout"] / total
 
     entry = strategy.get("entry", {})
     threshold = int(entry.get("threshold", 30))
     sl_pct = float(strategy.get("stop_loss_pct", 1.0))
     tp_pct = float(strategy.get("take_profit_pct", 2.0))
     pos_size = float(strategy.get("position_size_r", 0.5))
-    max_hold = float(strategy.get("max_hold_hours", 4.0))
 
     # Bad score + mostly SL hits -> entry threshold too aggressive, require deeper oversold
     if score_val < -0.2 and sl_rate > 0.5 and threshold < 45:
@@ -101,13 +99,6 @@ def _pick_hypothesis(score_val: float, trades: list, strategy: dict) -> tuple:
         return ("position_size_r", pos_size, new_val,
                 f"Score {score_val:.3f} below -0.4 — shrinking position size {pos_size}->{new_val} "
                 f"to limit drawdown while diagnosis continues.")
-
-    # High timeout rate + losing -> positions stalling, cut max hold time
-    if timeout_rate > 0.4 and score_val < 0.1 and max_hold > 2.0:
-        new_val = max(max_hold - 1.0, 2.0)
-        return ("max_hold_hours", max_hold, new_val,
-                f"Timeout rate {timeout_rate:.0%}, score {score_val:.3f} — reducing max hold "
-                f"{max_hold}h->{new_val}h to cut losers that stall before hitting TP.")
 
     # Marginal score + high SL rate -> SL too tight, widen slightly
     if -0.2 <= score_val < 0.1 and sl_rate > 0.4 and sl_pct < 2.5:
