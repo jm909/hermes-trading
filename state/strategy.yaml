@@ -6,5 +6,5 @@ entry:
   threshold: 42
 position_size_r: 0.2
 stop_loss_pct: 1.5
-take_profit_pct: 4.0
-version: '40'
+take_profit_pct: 2.0
+version: '41'
