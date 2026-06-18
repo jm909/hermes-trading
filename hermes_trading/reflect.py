@@ -60,13 +60,17 @@ def _archive_strategy(strategy: dict, version: str) -> None:
 
 
 def _exit_distribution(trades: list) -> dict:
-    counts = {"sl": 0, "tp": 0, "timeout": 0, "other": 0}
+    counts = {"sl": 0, "tp": 0, "rsi_target": 0, "ema_exit": 0, "timeout": 0, "other": 0}
     for t in trades:
         reason = str(t.get("exit_reason", "")).lower()
         if "sl" in reason or "stop" in reason:
             counts["sl"] += 1
         elif "tp" in reason or "profit" in reason or "take" in reason:
             counts["tp"] += 1
+        elif reason == "rsi_target":
+            counts["rsi_target"] += 1
+        elif reason == "ema_exit":
+            counts["ema_exit"] += 1
         elif "time" in reason or "expire" in reason:
             counts["timeout"] += 1
         else:

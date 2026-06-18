@@ -251,6 +251,24 @@ async def run_loop(asset: str, goal: dict, state_dir: pathlib.Path):
                 elif pnl_pct >= take_profit_pct:
                     exit_reason = "take_profit"
 
+                # RSI mean-reversion target: exit when RSI reaches the opposite extreme
+                if exit_reason is None:
+                    current_rsi = price_data.get("rsi_14", 50)
+                    rsi_exit_long = strategy.get("rsi_exit_long", 60)
+                    rsi_exit_short = strategy.get("rsi_exit_short", 40)
+                    if direction == "long" and current_rsi >= rsi_exit_long:
+                        exit_reason = "rsi_target"
+                    elif direction == "short" and current_rsi <= rsi_exit_short:
+                        exit_reason = "rsi_target"
+
+                # EMA reversal exit: trend setup is invalidated when price crosses back through EMA
+                if exit_reason is None:
+                    above_ema = price_data.get("above_ema20", True)
+                    if direction == "long" and not above_ema:
+                        exit_reason = "ema_exit"
+                    elif direction == "short" and above_ema:
+                        exit_reason = "ema_exit"
+
                 if exit_reason:
                     held_mins = round(held_hours * 60, 1)
                     trade = {
