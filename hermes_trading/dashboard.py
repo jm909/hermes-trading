@@ -132,6 +132,9 @@ HTML = """<!DOCTYPE html>
   .tag.short { background: #3a1a1a; color: #f87171; }
   .tag.sl { background: #2a1a1a; color: #f87171; }
   .tag.tp { background: #1a2a1a; color: #34d399; }
+  .tag.rsi { background: #1a1a3a; color: #a78bfa; }
+  .tag.ema { background: #1a2a2a; color: #60a5fa; }
+  .tag.time { background: #2a2a1a; color: #fbbf24; }
   .strategy-box {
     background: #111827;
     border: 1px solid #1f2937;
@@ -244,9 +247,20 @@ def build_html():
             direction = t.get("direction", "")
             reason = t.get("exit_reason", "")
             dir_tag = f'<span class="tag {direction}">{direction.upper()}</span>'
-            reason_tag = f'<span class="tag sl">STOP LOSS</span>' if "stop" in reason else f'<span class="tag tp">{reason.upper()}</span>'
+            if "stop" in reason:
+                reason_tag = '<span class="tag sl">STOP LOSS</span>'
+            elif "take" in reason or reason == "take_profit":
+                reason_tag = '<span class="tag tp">TAKE PROFIT</span>'
+            elif reason == "rsi_target":
+                reason_tag = '<span class="tag rsi">RSI TARGET</span>'
+            elif reason == "ema_exit":
+                reason_tag = '<span class="tag ema">EMA EXIT</span>'
+            elif "time" in reason:
+                reason_tag = '<span class="tag time">TIME EXIT</span>'
+            else:
+                reason_tag = f'<span class="tag">{reason.upper()}</span>'
             rows += f"""<tr>
-              <td style="color:#6b7280">{t.get('ts','')[:19].replace('T',' ')}</td>
+              <td style="color:#6b7280">{t.get('ts_open','')[:19].replace('T',' ')}</td>
               <td><strong>{t.get('asset','')}</strong></td>
               <td>{dir_tag}</td>
               <td>${t.get('entry_price',0):,.2f}</td>
@@ -262,15 +276,15 @@ def build_html():
     if hypotheses:
         hrows = ""
         for h in reversed(hypotheses):
-            old_v = h.get('strategy_version_from','?')
-            new_v = h.get('strategy_version_to','?')
+            old_v = h.get('from_version','?')
+            new_v = h.get('to_version','?')
             hrows += f"""<tr>
-              <td style="color:#6b7280">{h.get('ts','')[:19].replace('T',' ')}</td>
+              <td style="color:#6b7280">{h.get('time','')[:19].replace('T',' ')}</td>
               <td><span style="color:#a78bfa">v{old_v}</span> &rarr; <span style="color:#60a5fa">v{new_v}</span></td>
-              <td><code style="background:#1f2937;padding:2px 8px;border-radius:4px;font-size:13px">{h.get('changed_var','')}</code></td>
-              <td style="color:#f87171">{h.get('old_val','')}</td>
-              <td style="color:#34d399">{h.get('new_val','')}</td>
-              <td style="color:#9ca3af;font-size:13px">{h.get('rationale') or h.get('hypothesis','')}</td>
+              <td><code style="background:#1f2937;padding:2px 8px;border-radius:4px;font-size:13px">{h.get('variable_changed','')}</code></td>
+              <td style="color:#f87171">{h.get('old_value','')}</td>
+              <td style="color:#34d399">{h.get('new_value','')}</td>
+              <td style="color:#9ca3af;font-size:13px">{h.get('rationale','')}</td>
             </tr>"""
         reflections_html = f'<div class="table-wrap"><table><thead><tr><th>Time</th><th>Version</th><th>Variable</th><th>Old</th><th>New</th><th>Rationale</th></tr></thead><tbody>{hrows}</tbody></table></div>'
     else:
@@ -279,9 +293,13 @@ def build_html():
     entry = strategy.get("entry", {})
     strategy_html = f"""<div class="strategy-box">
       <div class="strategy-item"><div class="strategy-key">Indicator</div><div class="strategy-val">{entry.get('indicator','rsi').upper()}</div></div>
-      <div class="strategy-item"><div class="strategy-key">Threshold</div><div class="strategy-val">{entry.get('threshold','?')}</div></div>
+      <div class="strategy-item"><div class="strategy-key">Long Entry</div><div class="strategy-val">RSI &lt; {entry.get('threshold','?')}</div></div>
+      <div class="strategy-item"><div class="strategy-key">Short Entry</div><div class="strategy-val">RSI &gt; {entry.get('short_threshold','?')}</div></div>
       <div class="strategy-item"><div class="strategy-key">Direction</div><div class="strategy-val" style="color:#34d399">{entry.get('direction','?').upper()}</div></div>
       <div class="strategy-item"><div class="strategy-key">Stop Loss</div><div class="strategy-val" style="color:#f87171">{strategy.get('stop_loss_pct','?')}%</div></div>
+      <div class="strategy-item"><div class="strategy-key">Take Profit</div><div class="strategy-val" style="color:#34d399">{strategy.get('take_profit_pct','?')}%</div></div>
+      <div class="strategy-item"><div class="strategy-key">RSI Exit Long</div><div class="strategy-val" style="color:#a78bfa">&ge; {strategy.get('rsi_exit_long',60)}</div></div>
+      <div class="strategy-item"><div class="strategy-key">RSI Exit Short</div><div class="strategy-val" style="color:#a78bfa">&le; {strategy.get('rsi_exit_short',40)}</div></div>
       <div class="strategy-item"><div class="strategy-key">Position Size</div><div class="strategy-val">{strategy.get('position_size_r','?')}R</div></div>
       <div class="strategy-item"><div class="strategy-key">Version</div><div class="strategy-val" style="color:#60a5fa">v{strategy.get('version','?')}</div></div>
     </div>"""
