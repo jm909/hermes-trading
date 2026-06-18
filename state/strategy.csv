@@ -1,5 +1,5 @@
 Parameter,Value,Description
-Version,41,Current strategy version
+Version,42,Current strategy version
 Indicator,RSI,Entry signal indicator
 RSI Threshold,42,Enter long when RSI below this
 Direction,BOTH,Trade direction
