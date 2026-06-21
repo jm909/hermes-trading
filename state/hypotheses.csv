@@ -33,3 +33,4 @@ Time,From Version,To Version,Variable Changed,Old Value,New Value,Rationale,Real
 2026-06-18T13:36:01.008181+00:00,42,43,stop_loss_pct,1.5,1.25,No dominant pattern (score -0.478) — tightening SL 1.5%->1.25% to improve R:R ratio.,-0.000643,0.020843
 2026-06-19T14:22:21.655607+00:00,43,44,stop_loss_pct,1.25,1.0,No dominant pattern (score -0.415) — tightening SL 1.25%->1.0% to improve R:R ratio.,-0.000224,0.004056
 2026-06-20T09:44:34.243809+00:00,44,45,stop_loss_pct,1.0,0.75,No dominant pattern (score 0.080) — tightening SL 1.0%->0.75% to improve R:R ratio.,0.008414,0.001035
+2026-06-21T09:16:05.096184+00:00,45,46,take_profit_pct,2.0,2.25,Baseline nudge (score 0.028) — widening TP 2.0%->2.25% to improve R:R.,0.003005,0.000538
