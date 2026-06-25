@@ -44,3 +44,5 @@ Time,From Version,To Version,Variable Changed,Old Value,New Value,Rationale,Real
 2026-06-24T10:19:15.008849+00:00,53,54,take_profit_pct,4.0,4.25,Baseline nudge (score -0.407) — widening TP 4.0%->4.25% to improve R:R.,-0.001855,0.001855
 2026-06-24T11:20:00.954865+00:00,54,55,take_profit_pct,4.25,4.5,Baseline nudge (score -0.407) — widening TP 4.25%->4.5% to improve R:R.,-0.001855,0.001855
 2026-06-24T12:49:51.222201+00:00,55,56,take_profit_pct,4.5,4.75,Baseline nudge (score -0.409) — widening TP 4.5%->4.75% to improve R:R.,-0.00252,0.00252
+2026-06-25T00:32:58.074345+00:00,56,57,take_profit_pct,4.75,5.0,Baseline nudge (score -0.409) — widening TP 4.75%->5.0% to improve R:R.,-0.001373,0.002403
+2026-06-25T01:33:43.771949+00:00,57,58,take_profit_pct,5.0,5.25,Baseline nudge (score -0.409) — widening TP 5.0%->5.25% to improve R:R.,-0.001373,0.002403
