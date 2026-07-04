@@ -8,5 +8,5 @@ position_size_r: 0.2
 rsi_exit_long: 60
 rsi_exit_short: 40
 stop_loss_pct: 0.75
-take_profit_pct: 10.25
-version: '78'
+take_profit_pct: 10.5
+version: '79'
